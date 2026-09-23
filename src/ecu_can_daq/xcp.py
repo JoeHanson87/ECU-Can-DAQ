@@ -35,6 +35,7 @@ def _group_measurements(definitions: list[MeasurementDefinition]) -> list[Memory
     ordered = sorted(definitions, key=lambda item: (item.address_extension, item.ecu_address))
     blocks: list[MemoryBlock] = []
     for definition in ordered:
+        definition_end = definition.ecu_address + definition.size_bytes
         if not blocks:
             blocks.append(
                 MemoryBlock(
@@ -49,12 +50,12 @@ def _group_measurements(definitions: list[MeasurementDefinition]) -> list[Memory
         last_end = last.start_address + last.length
         if (
             last.address_extension == definition.address_extension
-            and last_end == definition.ecu_address
+            and definition.ecu_address <= last_end
         ):
             blocks[-1] = MemoryBlock(
                 address_extension=last.address_extension,
                 start_address=last.start_address,
-                length=last.length + definition.size_bytes,
+                length=max(last_end, definition_end) - last.start_address,
             )
         else:
             blocks.append(
@@ -77,13 +78,17 @@ class XcpClient:
 
     def connect(self) -> None:
         self._link.open()
-        response = self._exchange(bytes([CONNECT, 0x00]))
-        if response[0] != POSITIVE_RESPONSE:
-            raise XcpError("ECU rejected XCP CONNECT")
-        if self._max_payload_bytes is None:
-            max_dto = response[4] if len(response) > 4 else 8
-            self._max_payload_bytes = max(1, min(7, max_dto - 1))
-        self._connected = True
+        try:
+            response = self._exchange(bytes([CONNECT, 0x00]))
+            if response[0] != POSITIVE_RESPONSE:
+                raise XcpError("ECU rejected XCP CONNECT")
+            if self._max_payload_bytes is None:
+                max_dto = response[4] if len(response) > 4 else 8
+                self._max_payload_bytes = max(1, min(7, max_dto - 1))
+            self._connected = True
+        except Exception:
+            self._link.close()
+            raise
 
     def disconnect(self) -> None:
         if not self._connected:

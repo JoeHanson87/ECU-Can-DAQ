@@ -64,7 +64,11 @@ class TcpJsonStreamer:
         for client in dead_clients:
             self._clients.discard(client)
             client.close()
-            await client.wait_closed()
+        if dead_clients:
+            await asyncio.gather(
+                *(client.wait_closed() for client in dead_clients),
+                return_exceptions=True,
+            )
 
     async def _handle_client(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
@@ -80,9 +84,15 @@ class TcpJsonStreamer:
             writer.write(
                 json.dumps(metadata, separators=(",", ":")).encode("utf-8") + b"\n"
             )
-            await writer.drain()
+            try:
+                await writer.drain()
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                return
             await reader.read()
         finally:
             self._clients.discard(writer)
             writer.close()
-            await writer.wait_closed()
+            try:
+                await writer.wait_closed()
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                pass

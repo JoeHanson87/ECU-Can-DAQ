@@ -103,6 +103,20 @@ class XcpClientTests(unittest.TestCase):
         upload_payloads = [payload for payload in link.exchanges if payload[0] == UPLOAD]
         self.assertEqual([payload[1] for payload in upload_payloads], [7, 1])
 
+    def test_read_memory_respects_configured_max_payload_bytes(self) -> None:
+        link = _FakeLink()
+        for offset in range(5):
+            link.memory[(0, 0x3000 + offset)] = 0x20 + offset
+        client = XcpClient(link, max_payload_bytes=3)
+
+        client.connect()
+        data = client.read_memory(0, 0x3000, 5)
+        client.disconnect()
+
+        self.assertEqual(data, bytes([0x20, 0x21, 0x22, 0x23, 0x24]))
+        upload_payloads = [payload for payload in link.exchanges if payload[0] == UPLOAD]
+        self.assertEqual([payload[1] for payload in upload_payloads], [3, 2])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -88,14 +88,14 @@ class NiXnetCanLink(RequestResponseLink):
                 raise TimeoutError(
                     f"Timed out waiting for an XCP response on CAN ID 0x{self._response_id:X}"
                 )
-            frames = self._input_session.frames.read(1, remaining_time)
+            frames = self._input_session.frames.read(32, remaining_time)
             if not frames:
                 continue
-            received = frames[0]
-            if int(received.identifier) != self._response_id:
-                continue
-            payload_length = getattr(received, "payload_length", len(received.payload))
-            return bytes(received.payload[:payload_length])
+            for received in frames:
+                if int(received.identifier) != self._response_id:
+                    continue
+                payload_length = getattr(received, "payload_length", len(received.payload))
+                return bytes(received.payload[:payload_length])
 
 
 class NiXnetTransport(MeasurementTransport):

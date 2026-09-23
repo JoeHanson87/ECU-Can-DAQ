@@ -27,9 +27,9 @@ class AcquisitionService:
         period_seconds = 1.0 / self._rate_hz
         started_at = time.perf_counter()
         sequence = 0
-        await self._streamer.start()
-        await asyncio.to_thread(self._transport.connect)
         try:
+            await self._streamer.start()
+            await asyncio.to_thread(self._transport.connect)
             while True:
                 cycle_started_at = time.perf_counter()
                 values = await asyncio.to_thread(
