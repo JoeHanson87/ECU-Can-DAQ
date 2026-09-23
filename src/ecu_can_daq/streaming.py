@@ -26,9 +26,13 @@ class TcpJsonStreamer:
         )
 
     async def stop(self) -> None:
-        for client in list(self._clients):
+        clients = list(self._clients)
+        for client in clients:
             client.close()
-            await client.wait_closed()
+        if clients:
+            await asyncio.gather(
+                *(client.wait_closed() for client in clients), return_exceptions=True
+            )
         self._clients.clear()
         if self._server is not None:
             self._server.close()
@@ -38,12 +42,25 @@ class TcpJsonStreamer:
     async def broadcast(self, batch: MeasurementBatch) -> None:
         payload = json.dumps(batch.to_message(), separators=(",", ":")).encode("utf-8") + b"\n"
         dead_clients: list[asyncio.StreamWriter] = []
-        for client in self._clients:
+        drains: list[tuple[asyncio.StreamWriter, asyncio.Task[None]]] = []
+        for client in list(self._clients):
             try:
                 client.write(payload)
-                await client.drain()
             except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
                 dead_clients.append(client)
+                continue
+            drains.append((client, asyncio.create_task(client.drain())))
+
+        if drains:
+            results = await asyncio.gather(
+                *(task for _, task in drains), return_exceptions=True
+            )
+            for (client, _), result in zip(drains, results):
+                if isinstance(
+                    result,
+                    (BrokenPipeError, ConnectionResetError, ConnectionAbortedError),
+                ):
+                    dead_clients.append(client)
         for client in dead_clients:
             self._clients.discard(client)
             client.close()

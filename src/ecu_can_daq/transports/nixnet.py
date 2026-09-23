@@ -90,9 +90,7 @@ class NiXnetCanLink(RequestResponseLink):
                 )
             frames = self._input_session.frames.read(1, remaining_time)
             if not frames:
-                raise TimeoutError(
-                    f"Timed out waiting for an XCP response on CAN ID 0x{self._response_id:X}"
-                )
+                continue
             received = frames[0]
             if int(received.identifier) != self._response_id:
                 continue
