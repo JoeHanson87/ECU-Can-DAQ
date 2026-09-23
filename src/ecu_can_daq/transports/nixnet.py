@@ -67,6 +67,10 @@ class NiXnetCanLink(RequestResponseLink):
     def exchange(self, payload: bytes) -> bytes:
         if not self._runtime or self._input_session is None or self._output_session is None:
             raise RuntimeError("NI-XNET link is not open")
+        if len(payload) > 8:
+            raise ValueError(
+                f"XCP request exceeds classic CAN payload size: {len(payload)} bytes"
+            )
 
         padded_payload = payload[:8].ljust(8, b"\x00")
         frame = self._runtime.types.CanFrame(

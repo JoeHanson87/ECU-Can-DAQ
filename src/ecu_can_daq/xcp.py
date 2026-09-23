@@ -124,6 +124,10 @@ class XcpClient:
             response = self._exchange(bytes([UPLOAD, chunk_size]))
             if response[0] != POSITIVE_RESPONSE:
                 raise XcpError("ECU returned an invalid XCP upload response")
+            if len(response) < 1 + chunk_size:
+                raise XcpError(
+                    f"ECU returned a truncated XCP upload response for {chunk_size} bytes"
+                )
             data.extend(response[1 : 1 + chunk_size])
             remaining -= chunk_size
         return bytes(data)

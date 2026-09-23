@@ -29,8 +29,8 @@ Example sample batch:
 
 ```bash
 python -m ecu_can_daq \
-  --a2l /home/runner/work/ECU-Can-DAQ/ECU-Can-DAQ/examples/sample.a2l \
-  --measurements /home/runner/work/ECU-Can-DAQ/ECU-Can-DAQ/examples/sample_measurements.txt \
+  --a2l examples/sample.a2l \
+  --measurements examples/sample_measurements.txt \
   --transport simulated \
   --rate-hz 100
 ```

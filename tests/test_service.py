@@ -1,9 +1,12 @@
 import unittest
+from pathlib import Path
 
 from ecu_can_daq.a2l import load_measurements, resolve_measurements
 from ecu_can_daq.service import AcquisitionService
 from ecu_can_daq.streaming import TcpJsonStreamer
 from ecu_can_daq.transports.simulated import SimulatedTransport
+
+EXAMPLES_DIR = Path(__file__).resolve().parents[1] / "examples"
 
 
 class _RecordingStreamer(TcpJsonStreamer):
@@ -23,9 +26,7 @@ class _RecordingStreamer(TcpJsonStreamer):
 
 class AcquisitionServiceTests(unittest.IsolatedAsyncioTestCase):
     async def test_run_publishes_batches(self) -> None:
-        definitions = load_measurements(
-            "/home/runner/work/ECU-Can-DAQ/ECU-Can-DAQ/examples/sample.a2l"
-        )
+        definitions = load_measurements(EXAMPLES_DIR / "sample.a2l")
         measurements = resolve_measurements(definitions, ["EngineSpeed", "Throttle"])
         streamer = _RecordingStreamer()
         streamer.configure_measurements(measurements)
