@@ -1,0 +1,18 @@
+/begin PROJECT ECU_CAN_DAQ "Example project"
+  /begin MODULE ExampleModule "Example ECU"
+    /begin MEASUREMENT EngineSpeed "Engine speed" ULONG NO_COMPU_METHOD 1 0 0 8000
+      ECU_ADDRESS 0x1000
+      ECU_ADDRESS_EXTENSION 0
+      BYTE_ORDER MSB_LAST
+    /end MEASUREMENT
+
+    /begin MEASUREMENT Throttle "Throttle position" UBYTE NO_COMPU_METHOD 1 0 0 100
+      ECU_ADDRESS 0x1004
+    /end MEASUREMENT
+
+    /begin MEASUREMENT CoolantTemp "Coolant temperature" SWORD NO_COMPU_METHOD 1 0 -40 150
+      ECU_ADDRESS 0x1010
+      BYTE_ORDER MSB_FIRST
+    /end MEASUREMENT
+  /end MODULE
+/end PROJECT
