@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ecu-can-daq"
+version = "0.1.0"
+description = "A2L-driven ECU CAN data acquisition and LabVIEW streaming application"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  { name = "GitHub Copilot" }
+]
+dependencies = []
+
+[project.optional-dependencies]
+nixnet = [
+  "nixnet~=1.0.0; platform_system == 'Windows'",
+]
+
+[project.scripts]
+ecu-can-daq = "ecu_can_daq.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ecu_can_daq"]
