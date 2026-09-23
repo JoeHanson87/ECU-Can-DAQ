@@ -64,8 +64,7 @@ class TcpJsonStreamer:
                 json.dumps(metadata, separators=(",", ":")).encode("utf-8") + b"\n"
             )
             await writer.drain()
-            while not reader.at_eof():
-                await reader.readline()
+            await reader.read()
         finally:
             self._clients.discard(writer)
             writer.close()

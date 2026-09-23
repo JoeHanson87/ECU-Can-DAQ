@@ -68,7 +68,9 @@ def _group_measurements(definitions: list[MeasurementDefinition]) -> list[Memory
 
 
 class XcpClient:
-    def __init__(self, link: RequestResponseLink, max_payload_bytes: int = 7) -> None:
+    def __init__(
+        self, link: RequestResponseLink, max_payload_bytes: int | None = None
+    ) -> None:
         self._link = link
         self._max_payload_bytes = max_payload_bytes
         self._connected = False
@@ -78,6 +80,9 @@ class XcpClient:
         response = self._exchange(bytes([CONNECT, 0x00]))
         if response[0] != POSITIVE_RESPONSE:
             raise XcpError("ECU rejected XCP CONNECT")
+        if self._max_payload_bytes is None:
+            max_dto = response[4] if len(response) > 4 else 8
+            self._max_payload_bytes = max(1, min(7, max_dto - 1))
         self._connected = True
 
     def disconnect(self) -> None:
@@ -86,7 +91,7 @@ class XcpClient:
             return
         try:
             self._exchange(bytes([DISCONNECT]))
-        except XcpError:
+        except (XcpError, TimeoutError, RuntimeError):
             pass
         finally:
             self._connected = False
@@ -119,8 +124,9 @@ class XcpClient:
         )
         data = bytearray()
         remaining = length
+        max_payload_bytes = self._max_payload_bytes or 7
         while remaining > 0:
-            chunk_size = min(self._max_payload_bytes, remaining)
+            chunk_size = min(max_payload_bytes, remaining)
             response = self._exchange(bytes([UPLOAD, chunk_size]))
             if response[0] != POSITIVE_RESPONSE:
                 raise XcpError("ECU returned an invalid XCP upload response")

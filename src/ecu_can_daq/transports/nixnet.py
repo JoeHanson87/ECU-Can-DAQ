@@ -74,11 +74,10 @@ class NiXnetCanLink(RequestResponseLink):
                 f"XCP request exceeds classic CAN payload size: {len(payload)} bytes"
             )
 
-        padded_payload = payload[:8].ljust(8, b"\x00")
         frame = self._runtime.types.CanFrame(
             self._runtime.types.CanIdentifier(self._request_id),
             self._runtime.constants.FrameType.CAN_DATA,
-            bytearray(padded_payload[: len(payload)]),
+            bytearray(payload),
         )
         self._output_session.frames.write([frame])
 
