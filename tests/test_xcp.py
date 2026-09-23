@@ -78,6 +78,31 @@ class XcpClientTests(unittest.TestCase):
         self.assertEqual(sum(1 for payload in link.exchanges if payload[0] == SET_MTA), 1)
         self.assertEqual(sum(1 for payload in link.exchanges if payload[0] == UPLOAD), 1)
 
+    def test_read_measurements_splits_large_uploads(self) -> None:
+        definitions = []
+        link = _FakeLink()
+        for offset in range(8):
+            link.memory[(0, 0x2000 + offset)] = offset + 1
+            definitions.append(
+                MeasurementDefinition(
+                    name=f"Signal{offset}",
+                    data_type=DataType.UBYTE,
+                    ecu_address=0x2000 + offset,
+                    lower_limit=0,
+                    upper_limit=255,
+                )
+            )
+        client = XcpClient(link)
+
+        client.connect()
+        values = client.read_measurements(definitions)
+        client.disconnect()
+
+        self.assertEqual(values["Signal0"], 1.0)
+        self.assertEqual(values["Signal7"], 8.0)
+        upload_payloads = [payload for payload in link.exchanges if payload[0] == UPLOAD]
+        self.assertEqual([payload[1] for payload in upload_payloads], [7, 1])
+
 
 if __name__ == "__main__":
     unittest.main()

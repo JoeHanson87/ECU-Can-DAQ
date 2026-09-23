@@ -101,12 +101,7 @@ async def _run(args: argparse.Namespace) -> int:
         measurements=measurements,
         rate_hz=args.rate_hz,
     )
-
-    await streamer.start()
-    try:
-        await service.run(duration_seconds=args.duration)
-    finally:
-        await streamer.stop()
+    await service.run(duration_seconds=args.duration)
     return 0
 
 

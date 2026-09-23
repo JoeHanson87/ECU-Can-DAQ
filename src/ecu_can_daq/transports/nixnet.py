@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import time
 from typing import Any
 
 from ecu_can_daq.models import MeasurementDefinition
@@ -54,6 +55,7 @@ class NiXnetCanLink(RequestResponseLink):
         self._input_session.intf.baud_rate = self._bitrate
         self._output_session.intf.baud_rate = self._bitrate
         self._input_session.start()
+        self._output_session.start()
 
     def close(self) -> None:
         if self._output_session is not None:
@@ -76,12 +78,18 @@ class NiXnetCanLink(RequestResponseLink):
         frame = self._runtime.types.CanFrame(
             self._runtime.types.CanIdentifier(self._request_id),
             self._runtime.constants.FrameType.CAN_DATA,
-            bytearray(padded_payload),
+            bytearray(padded_payload[: len(payload)]),
         )
         self._output_session.frames.write([frame])
 
+        deadline = time.monotonic() + self._response_timeout
         while True:
-            frames = self._input_session.frames.read(1, self._response_timeout)
+            remaining_time = deadline - time.monotonic()
+            if remaining_time <= 0:
+                raise TimeoutError(
+                    f"Timed out waiting for an XCP response on CAN ID 0x{self._response_id:X}"
+                )
+            frames = self._input_session.frames.read(1, remaining_time)
             if not frames:
                 raise TimeoutError(
                     f"Timed out waiting for an XCP response on CAN ID 0x{self._response_id:X}"
@@ -89,7 +97,8 @@ class NiXnetCanLink(RequestResponseLink):
             received = frames[0]
             if int(received.identifier) != self._response_id:
                 continue
-            return bytes(received.payload)
+            payload_length = getattr(received, "payload_length", len(received.payload))
+            return bytes(received.payload[:payload_length])
 
 
 class NiXnetTransport(MeasurementTransport):

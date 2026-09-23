@@ -42,7 +42,7 @@ class TcpJsonStreamer:
             try:
                 client.write(payload)
                 await client.drain()
-            except (BrokenPipeError, ConnectionResetError):
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
                 dead_clients.append(client)
         for client in dead_clients:
             self._clients.discard(client)

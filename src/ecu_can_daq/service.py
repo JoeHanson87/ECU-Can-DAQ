@@ -27,6 +27,7 @@ class AcquisitionService:
         period_seconds = 1.0 / self._rate_hz
         started_at = time.perf_counter()
         sequence = 0
+        await self._streamer.start()
         self._transport.connect()
         try:
             while True:
@@ -53,3 +54,4 @@ class AcquisitionService:
                 await asyncio.sleep(max(0.0, period_seconds - elapsed))
         finally:
             self._transport.disconnect()
+            await self._streamer.stop()
