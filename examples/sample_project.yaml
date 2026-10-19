@@ -1,0 +1,40 @@
+name: Sample CANape-class Project
+description: Example project for ECU-Can-DAQ with TDMS+CSV and NI-XNET configurable via UI
+a2l_file: sample.a2l
+measurements_file: sample_measurements.txt
+device:
+  transport: simulated  # change to nixnet for real NI hardware
+  channel: CAN1
+  bitrate: 500000
+  can_termination: false
+  can_fd: false
+  request_id: 0x7E0
+  response_id: 0x7E8
+  response_timeout_ms: 250
+  host: 127.0.0.1
+  port: 0
+rasters:
+  - name: 100Hz
+    rate_hz: 100.0
+    signals:
+      - EngineSpeed
+      - Throttle
+    description: High-speed raster
+  - name: 10Hz
+    rate_hz: 10.0
+    signals:
+      - CoolantTemp
+    description: Slow thermal raster
+recorder:
+  file_path: recording.tdms
+  format: both
+  enable_csv_preview: true
+  csv_decimation_hz: 50.0
+  flush_interval_seconds: 1.0
+  root_properties:
+    project: sample_project
+    author: ECU-Can-DAQ
+host: 127.0.0.1
+port: 9500
+web_host: 127.0.0.1
+web_port: 8000

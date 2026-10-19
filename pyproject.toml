@@ -4,22 +4,60 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ecu-can-daq"
-version = "0.1.0"
-description = "A2L-driven ECU CAN data acquisition and LabVIEW streaming application"
+version = "0.2.0"
+description = "Full-featured ECU CAN DAQ and calibration tool - CANape-class with TDMS, Web dashboard, multi-raster DAQ"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [
-  { name = "GitHub Copilot" }
+  { name = "ECU-Can-DAQ Team" }
 ]
-dependencies = []
+dependencies = [
+  "pya2l>=0.3.0",
+  "pydantic>=2.5",
+  "fastapi>=0.110",
+  "uvicorn>=0.27",
+  "python-can>=4.3",
+  "nptdms>=1.10",
+  "numpy",
+  "pyyaml>=6.0",
+  "websockets>=12.0",
+  "anyio>=4.0",
+]
 
 [project.optional-dependencies]
 nixnet = [
   "nixnet~=1.0.0; platform_system == 'Windows'",
 ]
+pcan = [
+  "python-can[pcan]",
+]
+vector = [
+  "python-can[vector]",
+]
+dev = [
+  "pytest>=8.0",
+  "httpx>=0.27",
+  "asammdf>=7.0",
+]
+all = [
+  "nixnet~=1.0.0; platform_system == 'Windows'",
+  "python-can[pcan]",
+  "asammdf>=7.0",
+]
 
 [project.scripts]
 ecu-can-daq = "ecu_can_daq.cli:main"
 
+[project.urls]
+Homepage = "https://github.com/ECU-Can-DAQ"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/ecu_can_daq"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "ni_hw: tests requiring real NI hardware",
+  "mock_hw: tests using mocked PCAN/Vector",
+  "slow: slow tests",
+]

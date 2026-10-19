@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ECU-Can-DAQ — CANape-class DAQ</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+:root {
+  --bg: #0e1116;
+  --panel: #161b22;
+  --panel-2: #1c2128;
+  --border: #30363d;
+  --text: #c9d1d9;
+  --text-dim: #8b949e;
+  --accent: #1f6feb;
+  --accent-2: #238636;
+  --danger: #da3633;
+  --warn: #d29922;
+  --grid: #21262d;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+header {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+header h1 { font-size: 14px; margin: 0; letter-spacing: 0.5px; }
+header .status { display: flex; gap: 12px; align-items: center; }
+.badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; border: 1px solid var(--border); }
+.badge.ok { background: rgba(35,134,54,0.2); border-color: var(--accent-2); color: #3fb950; }
+.badge.warn { background: rgba(210,153,34,0.2); border-color: var(--warn); color: #d29922; }
+.badge.err { background: rgba(218,54,51,0.2); border-color: var(--danger); color: #f85149; }
+.badge.dim { color: var(--text-dim); }
+
+.main {
+  display: grid;
+  grid-template-columns: 320px 1fr 320px;
+  grid-template-rows: 1fr;
+  flex: 1;
+  overflow: hidden;
+  gap: 1px;
+  background: var(--border);
+}
+.panel {
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel-header {
+  padding: 8px 12px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.panel-body { overflow: auto; flex: 1; padding: 8px; }
+
+input, select, button, textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+input:focus, select:focus { outline: none; border-color: var(--accent); }
+button {
+  cursor: pointer;
+  background: var(--panel-2);
+}
+button.primary { background: var(--accent); border-color: var(--accent); color: white; }
+button.success { background: var(--accent-2); border-color: var(--accent-2); color: white; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button:hover:not(:disabled) { filter: brightness(1.2); }
+
+.signal-list { list-style: none; padding: 0; margin: 0; }
+.signal-item { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 4px; }
+.signal-item:hover { background: var(--panel-2); }
+.signal-item input[type=checkbox] { width: 14px; height: 14px; }
+.signal-meta { font-size: 10px; color: var(--text-dim); }
+
+.plot-area { display: flex; flex-direction: column; background: var(--bg); }
+#plot { flex: 1; min-height: 400px; }
+.controls { display: flex; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--border); background: var(--panel); align-items: center; flex-wrap: wrap; }
+
+.form-group { margin-bottom: 10px; display: flex; flex-direction: column; gap: 4px; }
+.form-row { display: flex; gap: 8px; }
+.form-row > * { flex: 1; }
+.toggle { display: flex; align-items: center; gap: 6px; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--border); font-size: 11px; }
+th { color: var(--text-dim); font-weight: 600; }
+
+#numerics { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.numeric-card { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
+.numeric-card .label { font-size: 10px; color: var(--text-dim); text-overflow: ellipsis; overflow: hidden; }
+.numeric-card .value { font-size: 16px; font-weight: 600; font-family: monospace; }
+
+.log { font-family: monospace; font-size: 11px; white-space: pre-wrap; color: var(--text-dim); max-height: 100px; overflow: auto; }
+
+@media (max-width: 1100px) {
+  .main { grid-template-columns: 260px 1fr; }
+  .main .panel:last-child { display: none; }
+}
+@media (max-width: 700px) {
+  .main { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>ECU-Can-DAQ <span style="color:var(--text-dim);font-weight:400;">— CANape-style DAQ • TDMS+CSV • NI Configurable</span></h1>
+  <div class="status">
+    <span id="conn-badge" class="badge dim">DISCONNECTED</span>
+    <span id="daq-badge" class="badge dim">IDLE</span>
+    <span id="overrun-badge" class="badge dim">Overruns: 0</span>
+    <span id="ws-badge" class="badge dim">WS: --</span>
+  </div>
+</header>
+
+<div class="main">
+  <!-- Left: Signal Explorer -->
+  <div class="panel">
+    <div class="panel-header">
+      <span>Signal Explorer</span>
+      <input id="signal-search" placeholder="Search..." style="width:120px;">
+    </div>
+    <div class="panel-body">
+      <div style="margin-bottom:8px;display:flex;gap:4px;">
+        <button id="btn-select-all" style="flex:1;">All</button>
+        <button id="btn-select-none" style="flex:1;">None</button>
+        <select id="raster-assign" style="flex:1.5;">
+          <option value="default">default 100Hz</option>
+        </select>
+        <button id="btn-assign" class="primary">Assign</button>
+      </div>
+      <ul id="signal-list" class="signal-list"></ul>
+      <div style="margin-top:12px;">
+        <b style="font-size:11px;color:var(--text-dim);">Rasters</b>
+        <div id="raster-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Center: Plot + controls -->
+  <div class="plot-area">
+    <div id="plot"></div>
+    <div class="controls">
+      <button id="btn-connect" class="primary">Connect & Start</button>
+      <button id="btn-stop">Stop</button>
+      <label>File: <input id="record-file" value="recording.tdms" style="width:180px;"></label>
+      <label><input type="checkbox" id="record-csv" checked> CSV preview</label>
+      <button id="btn-record" class="success">● Record</button>
+      <span style="margin-left:auto;color:var(--text-dim);" id="status-text">Ready</span>
+    </div>
+    <div class="panel" style="max-height:200px;">
+      <div class="panel-header"><span>Live Values</span><span id="latest-ts" style="color:var(--text-dim);font-size:10px;"></span></div>
+      <div class="panel-body"><div id="numerics"></div></div>
+    </div>
+  </div>
+
+  <!-- Right: Device + Recorder -->
+  <div class="panel">
+    <div class="panel-header"><span>Device Config — NI-XNET</span><button id="btn-test-conn">Test</button></div>
+    <div class="panel-body">
+      <div class="form-group"><label>Transport</label>
+        <select id="cfg-transport">
+          <option value="simulated">simulated</option>
+          <option value="nixnet">NI-XNET (real)</option>
+          <option value="socketcan">SocketCAN / Virtual</option>
+          <option value="pcan">PEAK PCAN (mock)</option>
+          <option value="vector">Vector XL (mock)</option>
+          <option value="ethernet">XCP Ethernet (TCP)</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Channel / Interface</label><input id="cfg-channel" value="CAN1"><div id="ni-ifaces" style="font-size:10px;color:var(--text-dim);"></div></div>
+      <div class="form-row">
+        <div class="form-group"><label>Bitrate</label><select id="cfg-bitrate"><option value="125000">125k</option><option value="250000">250k</option><option value="500000" selected>500k</option><option value="1000000">1M</option><option value="custom">Custom</option></select><input id="cfg-bitrate-custom" placeholder="custom" style="display:none;margin-top:4px;"></div>
+        <div class="form-group"><label>Response Timeout ms</label><input id="cfg-timeout" type="number" value="250"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Request ID (hex)</label><input id="cfg-req-id" value="0x7E0"></div>
+        <div class="form-group"><label>Response ID (hex)</label><input id="cfg-resp-id" value="0x7E8"></div>
+      </div>
+      <div class="form-group" style="flex-direction:row;gap:12px;">
+        <label class="toggle"><input type="checkbox" id="cfg-term"> Termination</label>
+        <label class="toggle"><input type="checkbox" id="cfg-fd"> CAN-FD</label>
+      </div>
+      <div class="form-group"><label>XCP Host (Ethernet)</label><input id="cfg-host" value="127.0.0.1"></div>
+      <div class="form-group"><label>XCP Port</label><input id="cfg-port" type="number" value="5555"></div>
+      <div style="display:flex;gap:6px;">
+        <button id="btn-apply-cfg" class="primary" style="flex:1;">Apply Config</button>
+        <button id="btn-save-proj" style="flex:1;">Save Project</button>
+      </div>
+      <div id="cfg-log" class="log"></div>
+
+      <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:8px;">
+        <b style="font-size:11px;color:var(--text-dim);">Project</b>
+        <div class="form-group"><label>A2L File</label><input id="cfg-a2l" placeholder="/path/to/ecu.a2l" readonly></div>
+        <div class="form-group"><label>Measurements file (opt)</label><input id="cfg-meas" placeholder="measurements.txt"></div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <b style="font-size:11px;color:var(--text-dim);">Recorder</b>
+        <table><thead><tr><th>File</th><th>Raster</th><th>Status</th></tr></thead><tbody id="recorder-table"><tr><td colspan=3 style="color:var(--text-dim);">No recording</td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="./app.js"></script>
+</body>
+</html>
